@@ -8,8 +8,8 @@ interface VocabWord {
   id: string
   word: string
   translation: string
-  cefLevel: string
   frequency: number
+  level: string
   example: string
   timestamp: string
 }
@@ -17,7 +17,6 @@ interface VocabWord {
 interface VocabList {
   id: string
   movieTitle: string
-  level: string
   words: VocabWord[]
 }
 
@@ -38,13 +37,28 @@ export default function VocabPage() {
         const cached = localStorage.getItem('lastSearch')
         if (cached) {
           const json = JSON.parse(cached)
-          setVocabList(json.data)
+          // Ensure words have IDs
+          const vocabWithIds = {
+            ...json,
+            words: json.words.map((w: any, idx: number) => ({
+              ...w,
+              id: w.id || `word_${w.word}_${idx}`
+            }))
+          }
+          setVocabList(vocabWithIds)
           setIsLoading(false)
         } else {
           const response = await fetch(`/api/vocab/${params.id}`)
           if (!response.ok) throw new Error('Failed to fetch')
           const json = await response.json()
-          setVocabList(json.data)
+          const vocabWithIds = {
+            ...json.data,
+            words: json.data.words.map((w: any, idx: number) => ({
+              ...w,
+              id: w.id || `word_${w.word}_${idx}`
+            }))
+          }
+          setVocabList(vocabWithIds)
           setIsLoading(false)
         }
       } catch (err) {
@@ -83,7 +97,6 @@ export default function VocabPage() {
           translation: word.translation,
           example: word.example,
           language: 'fr',
-          cefLevel: word.cefLevel,
         }),
       })
 
@@ -100,12 +113,11 @@ export default function VocabPage() {
   function handleDownloadCSV() {
     if (!vocabList) return
 
-    const headers = ['Word', 'Translation', 'Level', 'Frequency', 'Example']
+    const headers = ['Word', 'Translation', 'Level', 'Example']
     const rows = filteredWords.map((word) => [
       word.word,
       word.translation,
-      word.cefLevel,
-      word.frequency.toString(),
+      word.level,
       word.example,
     ])
 
@@ -156,7 +168,7 @@ export default function VocabPage() {
   // Filter and sort words
   let filteredWords = vocabList.words
   if (filterLevel) {
-    filteredWords = filteredWords.filter((w) => w.cefLevel === filterLevel)
+    filteredWords = filteredWords.filter((w) => w.level === filterLevel)
   }
   if (searchTerm) {
     filteredWords = filteredWords.filter(
@@ -171,12 +183,9 @@ export default function VocabPage() {
   }
 
   const levelCounts = {
-    A1: vocabList.words.filter((w) => w.cefLevel === 'A1').length,
-    A2: vocabList.words.filter((w) => w.cefLevel === 'A2').length,
-    B1: vocabList.words.filter((w) => w.cefLevel === 'B1').length,
-    B2: vocabList.words.filter((w) => w.cefLevel === 'B2').length,
-    C1: vocabList.words.filter((w) => w.cefLevel === 'C1').length,
-    C2: vocabList.words.filter((w) => w.cefLevel === 'C2').length,
+    Basic: vocabList.words.filter((w) => w.level === 'Basic').length,
+    Intermediate: vocabList.words.filter((w) => w.level === 'Intermediate').length,
+    Advanced: vocabList.words.filter((w) => w.level === 'Advanced').length,
   }
 
   return (
@@ -189,7 +198,6 @@ export default function VocabPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{vocabList.movieTitle}</h1>
           <p className="text-gray-600 mt-1">
-            Level: <span className="badge badge-blue">{vocabList.level}</span> •{' '}
             {vocabList.words.length} words found
           </p>
         </div>
@@ -197,20 +205,29 @@ export default function VocabPage() {
 
       {/* Main Content */}
       <main className="container-center py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+        {/* Level Filter */}
+        <div className="mb-6 flex gap-2">
+          <button
+            onClick={() => setFilterLevel(null)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              filterLevel === null
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            All ({vocabList.words.length})
+          </button>
           {(Object.entries(levelCounts) as [string, number][]).map(([level, count]) => (
             <button
               key={level}
               onClick={() => setFilterLevel(filterLevel === level ? null : level)}
-              className={`p-3 rounded-lg text-center transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filterLevel === level
                   ? 'bg-blue-600 text-white'
-                  : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-200'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              <div className="font-bold text-lg">{count}</div>
-              <div className="text-xs">{level}</div>
+              {level} ({count})
             </button>
           ))}
         </div>
@@ -264,7 +281,6 @@ export default function VocabPage() {
                     <th>Word</th>
                     <th>Translation</th>
                     <th>Level</th>
-                    <th>Frequency</th>
                     <th>Example</th>
                     <th>Action</th>
                   </tr>
@@ -274,12 +290,9 @@ export default function VocabPage() {
                     <tr key={word.id}>
                       <td className="font-medium text-blue-600">{word.word}</td>
                       <td>{word.translation}</td>
-                      <td>
-                        <span className="badge badge-blue">{word.cefLevel}</span>
-                      </td>
                       <td className="text-center">
-                        <span className="inline-block px-2 py-1 bg-gray-200 rounded text-sm">
-                          {word.frequency}x
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                          {word.level}
                         </span>
                       </td>
                       <td className="text-sm text-gray-600 max-w-xs truncate">

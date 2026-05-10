@@ -42,17 +42,12 @@ model VocabList {
   userId           String
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   movieTitle       String
-  episodeNumber    Int?
-  seasonNumber     Int?
   language         String        @default("fr")
-  level            LanguageLevel
-  subtitleSource   String        @default("opensubtitles")
-  subtitleUrl      String?
   words            VocabWord[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  @@unique([userId, movieTitle, episodeNumber, seasonNumber, level])
+  @@unique([userId, movieTitle])
   @@index([userId])
   @@index([movieTitle])
 }
@@ -66,14 +61,12 @@ model VocabWord {
   wordLower    String
   translation  String
   frequency    Int           @default(1)
-  cefLevel     LanguageLevel @default(B1)
+  level        String        @default("Intermediate")
   example      String?
-  timestamp    String?
   createdAt    DateTime      @default(now())
 
   @@unique([vocabListId, wordLower])
   @@index([vocabListId])
-  @@index([cefLevel])
 }
 
 // Words saved by user for flashcard practice
@@ -85,10 +78,11 @@ model SavedWord {
   language       String    @default("fr")
   translation    String
   example        String?
-  cefLevel       String    @default("B1")
+  level          String    @default("Intermediate")
   reviewCount    Int       @default(0)
   lastReviewedAt DateTime?
   nextReviewAt   DateTime?
+  aiExamples     String?   // JSON-encoded string[] of AI-generated examples
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

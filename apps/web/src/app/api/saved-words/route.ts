@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { requireAuth } from '@/lib/api-auth'
 import { saveWordSchema } from '@/lib/validators'
 import { successResponse, failResponse } from '@/lib/api-response'
+import { generateExamples } from '@/lib/ai-examples'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       return failResponse(errors, 'VALIDATION_ERROR', 400)
     }
 
-    const { word, translation, example, language, cefLevel } = validation.data
+    const { word, translation, example, language } = validation.data
 
     const savedWord = await prisma.savedWord.upsert({
       where: {
@@ -55,9 +56,22 @@ export async function POST(request: NextRequest) {
         language,
         translation,
         example: example || null,
-        cefLevel,
       },
     })
+
+    // Generate AI examples asynchronously
+    try {
+      const examples = await generateExamples(word, translation, language)
+      if (examples.length > 0) {
+        const updatedWord = await prisma.savedWord.update({
+          where: { id: savedWord.id },
+          data: { aiExamples: JSON.stringify(examples) },
+        })
+        return successResponse(updatedWord)
+      }
+    } catch (err) {
+      console.warn('AI examples generation failed:', err)
+    }
 
     return successResponse(savedWord)
   } catch (error) {

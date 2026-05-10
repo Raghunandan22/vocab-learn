@@ -11,6 +11,7 @@ interface SavedWord {
   example?: string
   reviewCount: number
   language: string
+  aiExamples?: string
 }
 
 export default function FlashcardsPage() {
@@ -191,10 +192,11 @@ export default function FlashcardsPage() {
 
               {/* Back */}
               <div
-                className="absolute w-full h-full bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-xl p-8 flex flex-col justify-center items-center text-white"
+                className="absolute w-full h-full bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-xl p-8 flex flex-col justify-center items-center text-white overflow-y-auto"
                 style={{
                   backfaceVisibility: 'hidden',
                   transform: 'rotateY(180deg)',
+                  minHeight: '20rem',
                 }}
               >
                 <p className="text-sm opacity-75 mb-4">English Translation</p>
@@ -202,10 +204,28 @@ export default function FlashcardsPage() {
                   {currentWord.translation}
                 </h2>
                 {currentWord.example && (
-                  <p className="text-sm italic opacity-90 text-center mt-4">
+                  <p className="text-sm italic opacity-90 text-center">
                     {currentWord.example}
                   </p>
                 )}
+                {currentWord.aiExamples && (() => {
+                  try {
+                    const examples: string[] = JSON.parse(currentWord.aiExamples)
+                    if (!examples.length) return null
+                    return (
+                      <div className="mt-4 border-t border-white/30 pt-4 w-full">
+                        <p className="text-xs opacity-60 mb-2 text-center">More examples</p>
+                        {examples.map((ex, i) => (
+                          <p key={i} className="text-sm italic opacity-90 text-center mb-1">
+                            {ex}
+                          </p>
+                        ))}
+                      </div>
+                    )
+                  } catch {
+                    return null
+                  }
+                })()}
               </div>
             </div>
           </div>

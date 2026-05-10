@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return failResponse(errors, 'VALIDATION_ERROR', 400)
     }
 
-    const { movieTitle, language, level } = validation.data
+    const { movieTitle, language } = validation.data
     const apiKey = process.env.TMDB_API_KEY
 
     if (!apiKey) {
@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
       movieTitle: movie?.title || movieTitle,
       movieOverview: movie?.overview,
       posterPath: movie?.poster_path,
-      level,
       words: [],
       message:
         'To extract vocabulary, please upload the movie subtitle file (SRT or VTT format) using the /api/vocab/upload endpoint',
