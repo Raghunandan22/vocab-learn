@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+interface MovieResult {
+  movieTitle: string
+  movieOverview?: string
+  posterPath?: string
+}
+
 export default function SearchPage() {
   const router = useRouter()
   const [movieTitle, setMovieTitle] = useState('')
@@ -11,6 +17,48 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [movieResult, setMovieResult] = useState<MovieResult | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setIsSearching(true)
+
+    if (!movieTitle.trim()) {
+      setError('Please enter a movie title')
+      setIsSearching(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/vocab/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieTitle, language: 'fr' }),
+      })
+
+      if (!response.ok) {
+        setError('Movie not found. Try a different title.')
+        setIsSearching(false)
+        return
+      }
+
+      const data = await response.json()
+      setMovieResult({
+        movieTitle: data.data.movieTitle,
+        movieOverview: data.data.movieOverview,
+        posterPath: data.data.posterPath,
+      })
+      setError('')
+    } catch (err) {
+      setError('Failed to search for movie. Please try again.')
+      console.error('Search error:', err)
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault()
@@ -116,24 +164,68 @@ export default function SearchPage() {
               </div>
             )}
 
-            <form onSubmit={handleUpload} className="space-y-6">
-              {/* Movie Title */}
-              <div>
-                <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-700 mb-2">
-                  Movie/Show Title
-                </label>
-                <input
-                  id="movieTitle"
-                  type="text"
-                  value={movieTitle}
-                  onChange={(e) => setMovieTitle(e.target.value)}
-                  placeholder="e.g., Amélie, Lupin"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={isLoading}
-                />
-                <p className="mt-1 text-xs text-gray-500">Name of the movie/show for your records</p>
+            {/* Step 1: Search for movie */}
+            {!movieResult ? (
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div>
+                  <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                    Movie/Show Title
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="movieTitle"
+                      type="text"
+                      value={movieTitle}
+                      onChange={(e) => setMovieTitle(e.target.value)}
+                      placeholder="e.g., Amélie, Lupin"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      disabled={isSearching}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSearching}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+                    >
+                      {isSearching ? '🔍' : '🎬 Find Movie'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Search TMDB to get movie info</p>
+                </div>
+              </form>
+            ) : null}
+
+            {/* Step 2: Movie preview */}
+            {movieResult && (
+              <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex gap-6">
+                  {movieResult.posterPath && (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w200${movieResult.posterPath}`}
+                      alt={movieResult.movieTitle}
+                      className="w-32 h-auto rounded-lg shadow-md"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-blue-900 mb-2">{movieResult.movieTitle}</h2>
+                    {movieResult.movieOverview && (
+                      <p className="text-sm text-blue-800 mb-4">{movieResult.movieOverview}</p>
+                    )}
+                    <button
+                      onClick={() => setMovieResult(null)}
+                      className="text-sm text-blue-600 hover:underline font-medium"
+                    >
+                      ← Search another movie
+                    </button>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* Step 3: Upload subtitles */}
+            {movieResult && (
+              <form onSubmit={handleUpload} className="space-y-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-900">Upload Subtitles for {movieResult.movieTitle}</h3>
 
               {/* File Upload */}
               <div>
@@ -179,14 +271,15 @@ Je vais très bien, merci!`}
                 </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg transition-colors"
-              >
-                {isLoading ? '⏳ Extracting vocabulary...' : '🚀 Extract Vocabulary'}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg transition-colors"
+                >
+                  {isLoading ? '⏳ Extracting vocabulary...' : '🚀 Extract Vocabulary'}
+                </button>
+              </form>
+            )}
 
             {/* Tips */}
             <div className="mt-8 pt-8 border-t">

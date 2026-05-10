@@ -27,14 +27,22 @@ export default function SettingsPage() {
       return
     }
 
-    // Load user preferences (in future, fetch from /api/user endpoint)
-    const saved = localStorage.getItem('userPreferences')
-    if (saved) {
-      const prefs = JSON.parse(saved)
-      setProficiencyLevel(prefs.proficiencyLevel || 'B1')
-      setTargetLanguage(prefs.targetLanguage || 'fr')
+    async function loadUserPreferences() {
+      try {
+        const response = await fetch('/api/user')
+        if (response.ok) {
+          const json = await response.json()
+          setProficiencyLevel(json.data.proficiencyLevel || 'B1')
+          setTargetLanguage(json.data.targetLanguage || 'fr')
+        }
+      } catch (err) {
+        console.error('Failed to load preferences:', err)
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    loadUserPreferences()
   }, [status])
 
   async function handleSave(e: React.FormEvent) {
@@ -43,13 +51,18 @@ export default function SettingsPage() {
     setMessage('')
 
     try {
-      // Save to localStorage (in future, POST to /api/user endpoint)
-      localStorage.setItem('userPreferences', JSON.stringify({
-        proficiencyLevel,
-        targetLanguage,
-      }))
-      setMessage('✅ Settings saved successfully!')
-      setTimeout(() => setMessage(''), 3000)
+      const response = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proficiencyLevel, targetLanguage }),
+      })
+
+      if (response.ok) {
+        setMessage('✅ Settings saved successfully!')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        setMessage('❌ Failed to save settings')
+      }
     } catch (err) {
       setMessage('❌ Failed to save settings')
       console.error('Error:', err)

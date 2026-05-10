@@ -12,6 +12,14 @@ interface SavedWord {
   createdAt: string
 }
 
+interface VocabListItem {
+  id: string
+  movieTitle: string
+  language: string
+  wordCount: number
+  createdAt: string
+}
+
 interface Stats {
   savedWordsCount: number
   reviewedWordsCount: number
@@ -22,6 +30,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const [savedWords, setSavedWords] = useState<SavedWord[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [vocabLists, setVocabLists] = useState<VocabListItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,9 +42,10 @@ export default function DashboardPage() {
 
     async function loadData() {
       try {
-        const [wordsRes, statsRes] = await Promise.all([
+        const [wordsRes, statsRes, vocabListsRes] = await Promise.all([
           fetch('/api/saved-words'),
           fetch('/api/stats'),
+          fetch('/api/vocab-lists'),
         ])
 
         if (wordsRes.ok) {
@@ -46,6 +56,11 @@ export default function DashboardPage() {
         if (statsRes.ok) {
           const json = await statsRes.json()
           setStats(json.data)
+        }
+
+        if (vocabListsRes.ok) {
+          const json = await vocabListsRes.json()
+          setVocabLists(json.data)
         }
       } catch (err) {
         console.error('Error loading data:', err)
@@ -148,12 +163,34 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <div className="card">
           <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No vocabulary lists yet</p>
-            <p className="text-gray-400 text-sm">
-              Start by <Link href="/search" className="text-blue-600 hover:underline">searching for a movie</Link>
-            </p>
-          </div>
+          {vocabLists.length > 0 ? (
+            <div className="space-y-3">
+              {vocabLists.map((list) => (
+                <Link
+                  key={list.id}
+                  href={`/vocab/${list.id}`}
+                  className="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-blue-600">{list.movieTitle}</p>
+                      <p className="text-sm text-gray-600">{list.wordCount} words • {list.language.toUpperCase()}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {new Date(list.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">No vocabulary lists yet</p>
+              <p className="text-gray-400 text-sm">
+                Start by <Link href="/search" className="text-blue-600 hover:underline">searching for a movie</Link>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Learning Stats */}
