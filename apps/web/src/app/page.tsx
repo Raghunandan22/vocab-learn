@@ -50,15 +50,18 @@ export default async function HomePage() {
             >
               Start Learning Free
             </Link>
-            <button className="border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:border-gray-400 transition-colors font-medium text-lg">
+            <a
+              href="#features"
+              className="border-2 border-gray-300 text-gray-700 px-8 py-3 rounded-lg hover:border-gray-400 transition-colors font-medium text-lg inline-block"
+            >
               Learn More
-            </button>
+            </a>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="container-center py-20">
+      <section id="features" className="container-center py-20">
         <h2 className="text-4xl font-bold text-center mb-16">Why VocabLearn?</h2>
         <div className="grid md:grid-cols-3 gap-8">
           {/* Feature 1 */}
