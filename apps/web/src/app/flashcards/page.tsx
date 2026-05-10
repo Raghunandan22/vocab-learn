@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 interface SavedWord {
   id: string
@@ -15,6 +17,7 @@ interface SavedWord {
 }
 
 export default function FlashcardsPage() {
+  const router = useRouter()
   const { status } = useSession()
   const [words, setWords] = useState<SavedWord[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,11 +25,12 @@ export default function FlashcardsPage() {
   const [isFlipped, setIsFlipped] = useState(false)
   const [reviewedCount, setReviewedCount] = useState(0)
   const [queue, setQueue] = useState<SavedWord[]>([])
+  const [totalSavedWords, setTotalSavedWords] = useState(0)
 
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'unauthenticated') {
-      window.location.href = '/login'
+      router.push('/login')
       return
     }
 
@@ -37,6 +41,13 @@ export default function FlashcardsPage() {
           const json = await response.json()
           setWords(json.data)
           setQueue(json.data)
+          setTotalSavedWords(json.data.length)
+        } else {
+          const allWordsRes = await fetch('/api/saved-words')
+          if (allWordsRes.ok) {
+            const json = await allWordsRes.json()
+            setTotalSavedWords(json.data.length)
+          }
         }
       } catch (err) {
         console.error('Error loading words:', err)
@@ -46,9 +57,19 @@ export default function FlashcardsPage() {
     }
 
     loadWords()
-  }, [status])
+  }, [status, router])
 
-  async function handleKnowIt() {
+  const moveToNext = useCallback(() => {
+    setQueue((prevQueue) => {
+      const newQueue = [...prevQueue]
+      newQueue.push(newQueue.shift()!)
+      return newQueue
+    })
+    setCurrentIndex(0)
+    setIsFlipped(false)
+  }, [])
+
+  const handleKnowIt = useCallback(async () => {
     if (queue.length === 0) return
 
     const currentWord = queue[currentIndex]
@@ -66,9 +87,9 @@ export default function FlashcardsPage() {
     } catch (err) {
       console.error('Error updating word:', err)
     }
-  }
+  }, [queue, currentIndex, moveToNext])
 
-  async function handlePracticeLater() {
+  const handlePracticeLater = useCallback(async () => {
     if (queue.length === 0) return
 
     const currentWord = queue[currentIndex]
@@ -83,28 +104,34 @@ export default function FlashcardsPage() {
       console.error('Error updating word:', err)
       moveToNext()
     }
-  }
+  }, [queue, currentIndex, moveToNext])
 
-  function moveToNext() {
-    const newQueue = [...queue]
-    newQueue.push(newQueue.shift()!)
-    setQueue(newQueue)
-    setCurrentIndex(0)
-    setIsFlipped(false)
-  }
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (queue.length === 0) return
+
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault()
+        setIsFlipped(!isFlipped)
+      } else if (e.code === 'ArrowRight' || e.key === 'k') {
+        e.preventDefault()
+        handleKnowIt()
+      } else if (e.code === 'ArrowLeft' || e.key === 'p') {
+        e.preventDefault()
+        handlePracticeLater()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [queue, isFlipped, handleKnowIt, handlePracticeLater])
 
   if (status === 'loading' || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="loading-spinner mb-4"></div>
-          <p className="text-gray-600">Loading flashcards...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner text="Loading flashcards..." />
   }
 
   if (queue.length === 0) {
+    const hasNoWords = totalSavedWords === 0
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow">
@@ -119,13 +146,27 @@ export default function FlashcardsPage() {
         <main className="container-center py-12">
           <div className="max-w-2xl mx-auto">
             <div className="card text-center py-12">
-              <p className="text-gray-500 mb-4 text-lg">All caught up for today!</p>
-              <p className="text-gray-400 mb-6">
-                You've reviewed all due words. Come back tomorrow for more!
-              </p>
-              <Link href="/search" className="button-primary inline-block">
-                Search a New Movie
-              </Link>
+              {hasNoWords ? (
+                <>
+                  <p className="text-gray-500 mb-4 text-lg">No words saved yet!</p>
+                  <p className="text-gray-400 mb-6">
+                    Start by searching for a movie and saving some words to review.
+                  </p>
+                  <Link href="/search" className="button-primary inline-block">
+                    Search a Movie
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-500 mb-4 text-lg">All caught up!</p>
+                  <p className="text-gray-400 mb-6">
+                    Great work! You've reviewed all due words. Come back tomorrow for more!
+                  </p>
+                  <Link href="/search" className="button-primary inline-block">
+                    Search a New Movie
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </main>
@@ -244,6 +285,15 @@ export default function FlashcardsPage() {
             >
               ✓ Know It
             </button>
+          </div>
+
+          {/* Keyboard Hints */}
+          <div className="text-center mb-8 text-sm text-gray-500">
+            <span>Space to flip</span>
+            <span className="mx-3">·</span>
+            <span>→ Know It</span>
+            <span className="mx-3">·</span>
+            <span>← Practice More</span>
           </div>
 
           {/* Queue Info */}

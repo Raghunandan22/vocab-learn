@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
+import { Navbar } from '@/components/Navbar'
 
 interface MovieResult {
   movieTitle: string
@@ -124,22 +126,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-blue-600">
-            VocabLearn
-          </Link>
-          <div className="space-x-4">
-            <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">
-              Dashboard
-            </Link>
-            <Link href="/flashcards" className="text-gray-700 hover:text-blue-600 font-medium">
-              Review
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-12">
@@ -200,10 +187,12 @@ export default function SearchPage() {
               <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex gap-6">
                   {movieResult.posterPath && (
-                    <img
+                    <Image
                       src={`https://image.tmdb.org/t/p/w200${movieResult.posterPath}`}
                       alt={movieResult.movieTitle}
-                      className="w-32 h-auto rounded-lg shadow-md"
+                      width={128}
+                      height={192}
+                      className="rounded-lg shadow-md"
                     />
                   )}
                   <div className="flex-1">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 interface VocabWord {
   id: string
@@ -37,30 +38,34 @@ export default function VocabPage() {
         const cached = localStorage.getItem('lastSearch')
         if (cached) {
           const json = JSON.parse(cached)
-          // Ensure words have IDs
-          const vocabWithIds = {
-            ...json,
-            words: json.words.map((w: any, idx: number) => ({
-              ...w,
-              id: w.id || `word_${w.word}_${idx}`
-            }))
+          // Only use cache if the ID matches the current URL
+          if (json.id === params.id) {
+            const vocabWithIds = {
+              ...json,
+              words: json.words.map((w: any, idx: number) => ({
+                ...w,
+                id: w.id || `word_${w.word}_${idx}`
+              }))
+            }
+            setVocabList(vocabWithIds)
+            setIsLoading(false)
+            return
           }
-          setVocabList(vocabWithIds)
-          setIsLoading(false)
-        } else {
-          const response = await fetch(`/api/vocab/${params.id}`)
-          if (!response.ok) throw new Error('Failed to fetch')
-          const json = await response.json()
-          const vocabWithIds = {
-            ...json.data,
-            words: json.data.words.map((w: any, idx: number) => ({
-              ...w,
-              id: w.id || `word_${w.word}_${idx}`
-            }))
-          }
-          setVocabList(vocabWithIds)
-          setIsLoading(false)
         }
+
+        // Fetch fresh from API if no matching cache
+        const response = await fetch(`/api/vocab/${params.id}`)
+        if (!response.ok) throw new Error('Failed to fetch')
+        const json = await response.json()
+        const vocabWithIds = {
+          ...json.data,
+          words: json.data.words.map((w: any, idx: number) => ({
+            ...w,
+            id: w.id || `word_${w.word}_${idx}`
+          }))
+        }
+        setVocabList(vocabWithIds)
+        setIsLoading(false)
       } catch (err) {
         setError('Failed to load vocabulary')
         console.error('Error:', err)
@@ -142,14 +147,7 @@ export default function VocabPage() {
   }
 
   if (isLoading)
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="loading-spinner mb-4"></div>
-          <p className="text-gray-600">Loading vocabulary...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner text="Loading vocabulary..." />
 
   if (error)
     return (
@@ -206,7 +204,7 @@ export default function VocabPage() {
       {/* Main Content */}
       <main className="container-center py-8">
         {/* Level Filter */}
-        <div className="mb-6 flex gap-2">
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setFilterLevel(null)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -271,56 +269,92 @@ export default function VocabPage() {
           </div>
         </div>
 
-        {/* Vocabulary Table */}
+        {/* Vocabulary Table (Desktop) */}
         {filteredWords.length > 0 ? (
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="table-base w-full">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th>Word</th>
-                    <th>Translation</th>
-                    <th>Level</th>
-                    <th>Example</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredWords.map((word) => (
-                    <tr key={word.id}>
-                      <td className="font-medium text-blue-600">{word.word}</td>
-                      <td>{word.translation}</td>
-                      <td className="text-center">
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
-                          {word.level}
-                        </span>
-                      </td>
-                      <td className="text-sm text-gray-600 max-w-xs truncate">
-                        {word.example}
-                      </td>
-                      <td className="text-center">
-                        <button
-                          onClick={() => handleSaveWord(word)}
-                          disabled={savingWord === word.word}
-                          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                            savedWords.has(word.word.toLowerCase())
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          } disabled:opacity-50`}
-                        >
-                          {savingWord === word.word
-                            ? '...'
-                            : savedWords.has(word.word.toLowerCase())
-                            ? '✓ Saved'
-                            : 'Save'}
-                        </button>
-                      </td>
+          <>
+            <div className="card overflow-hidden hidden md:block">
+              <div className="overflow-x-auto">
+                <table className="table-base w-full">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th>Word</th>
+                      <th>Translation</th>
+                      <th>Level</th>
+                      <th>Example</th>
+                      <th>Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredWords.map((word) => (
+                      <tr key={word.id}>
+                        <td className="font-medium text-blue-600">{word.word}</td>
+                        <td>{word.translation}</td>
+                        <td className="text-center">
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                            {word.level}
+                          </span>
+                        </td>
+                        <td className="text-sm text-gray-600 max-w-xs truncate">
+                          {word.example}
+                        </td>
+                        <td className="text-center">
+                          <button
+                            onClick={() => handleSaveWord(word)}
+                            disabled={savingWord === word.word}
+                            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                              savedWords.has(word.word.toLowerCase())
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            } disabled:opacity-50`}
+                          >
+                            {savingWord === word.word
+                              ? '...'
+                              : savedWords.has(word.word.toLowerCase())
+                              ? '✓ Saved'
+                              : 'Save'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            {/* Vocabulary Cards (Mobile) */}
+            <div className="md:hidden space-y-3">
+              {filteredWords.map((word) => (
+                <div
+                  key={word.id}
+                  className="card p-4 border border-gray-200 rounded-lg"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-blue-600 text-lg">{word.word}</span>
+                    <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                      {word.level}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">{word.translation}</p>
+                  <p className="text-xs text-gray-500 italic mb-3">{word.example}</p>
+                  <button
+                    onClick={() => handleSaveWord(word)}
+                    disabled={savingWord === word.word}
+                    className={`w-full px-3 py-2 rounded text-sm font-medium transition-colors ${
+                      savedWords.has(word.word.toLowerCase())
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    } disabled:opacity-50`}
+                  >
+                    {savingWord === word.word
+                      ? '...'
+                      : savedWords.has(word.word.toLowerCase())
+                      ? '✓ Saved'
+                      : 'Save'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="card text-center py-12">
             <p className="text-gray-500 mb-2">No words found</p>

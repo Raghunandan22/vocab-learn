@@ -1,8 +1,12 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { Navbar } from '@/components/Navbar'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { useToast } from '@/components/Toast'
 
 const LANGUAGE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 const LANGUAGES = [
@@ -13,17 +17,18 @@ const LANGUAGES = [
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
   const { data: session, status } = useSession()
+  const { showToast } = useToast()
   const [proficiencyLevel, setProficiencyLevel] = useState('B1')
   const [targetLanguage, setTargetLanguage] = useState('fr')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
 
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'unauthenticated') {
-      window.location.href = '/login'
+      router.push('/login')
       return
     }
 
@@ -43,12 +48,11 @@ export default function SettingsPage() {
     }
 
     loadUserPreferences()
-  }, [status])
+  }, [status, router])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    setMessage('')
 
     try {
       const response = await fetch('/api/user', {
@@ -58,13 +62,12 @@ export default function SettingsPage() {
       })
 
       if (response.ok) {
-        setMessage('✅ Settings saved successfully!')
-        setTimeout(() => setMessage(''), 3000)
+        showToast('Settings saved successfully!', 'success')
       } else {
-        setMessage('❌ Failed to save settings')
+        showToast('Failed to save settings', 'error')
       }
     } catch (err) {
-      setMessage('❌ Failed to save settings')
+      showToast('Failed to save settings', 'error')
       console.error('Error:', err)
     } finally {
       setSaving(false)
@@ -72,27 +75,12 @@ export default function SettingsPage() {
   }
 
   if (status === 'loading' || loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return <LoadingSpinner text="Loading settings..." />
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-blue-600">
-            VocabLearn
-          </Link>
-          <div className="space-x-4">
-            <Link href="/dashboard" className="text-gray-700 hover:text-blue-600 font-medium">
-              Dashboard
-            </Link>
-            <Link href="/search" className="text-gray-700 hover:text-blue-600 font-medium">
-              Search
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Main Content */}
       <main className="max-w-2xl mx-auto px-4 py-12">
@@ -107,16 +95,6 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-8">
-          {message && (
-            <div className={`mb-6 p-4 rounded-lg ${
-              message.startsWith('✅')
-                ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
-            }`}>
-              {message}
-            </div>
-          )}
-
           <form onSubmit={handleSave} className="space-y-8">
             {/* Language Level */}
             <div>

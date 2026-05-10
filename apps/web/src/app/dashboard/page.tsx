@@ -1,8 +1,10 @@
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 interface SavedWord {
   id: string
@@ -27,21 +29,24 @@ interface Stats {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { data: session, status } = useSession()
   const [savedWords, setSavedWords] = useState<SavedWord[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [vocabLists, setVocabLists] = useState<VocabListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (status === 'loading') return
     if (status === 'unauthenticated') {
-      window.location.href = '/login'
+      router.push('/login')
       return
     }
 
     async function loadData() {
       try {
+        setError('')
         const [wordsRes, statsRes, vocabListsRes] = await Promise.all([
           fetch('/api/saved-words'),
           fetch('/api/stats'),
@@ -62,17 +67,22 @@ export default function DashboardPage() {
           const json = await vocabListsRes.json()
           setVocabLists(json.data)
         }
+
+        if (!wordsRes.ok || !statsRes.ok || !vocabListsRes.ok) {
+          setError('Failed to load some data. Please refresh the page.')
+        }
       } catch (err) {
         console.error('Error loading data:', err)
+        setError('Failed to load data. Please refresh the page.')
       } finally {
         setLoading(false)
       }
     }
 
     loadData()
-  }, [status])
+  }, [status, router])
   if (status === 'loading' || loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return <LoadingSpinner text="Loading your dashboard..." />
   }
 
   if (!session) {
@@ -104,6 +114,18 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="container-center py-12">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex justify-between items-center">
+            <span>{error}</span>
+            <button
+              onClick={() => setError('')}
+              className="text-red-600 hover:text-red-800 font-medium"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-8 mb-12">
           {/* Search Section */}
