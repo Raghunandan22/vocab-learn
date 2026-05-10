@@ -1,4 +1,4 @@
-import { searchMovies } from '@/lib/tmdb'
+import axios from 'axios'
 import { searchSchema } from '@/lib/validators'
 import { successResponse, failResponse } from '@/lib/api-response'
 import { NextRequest } from 'next/server'
@@ -14,28 +14,30 @@ export async function POST(request: NextRequest) {
     }
 
     const { movieTitle, language, level } = validation.data
+    const apiKey = process.env.TMDB_API_KEY
 
-    console.log(`🎬 Searching for movie: "${movieTitle}"`)
-
-    // Search for movie metadata on TMDB
-    let movieData = null
-    try {
-      const movies = await searchMovies(movieTitle)
-      if (movies.length > 0) {
-        movieData = movies[0]
-        console.log(`✅ Found movie: "${movieData.title}"`)
-      }
-    } catch (err) {
-      console.warn('⚠️  TMDB search failed:', err instanceof Error ? err.message : err)
+    if (!apiKey) {
+      return failResponse('TMDB API key not configured', 'CONFIG_ERROR', 500)
     }
 
-    // For MVP: Subtitle extraction requires manual upload
-    // Return movie info and direct user to upload endpoint
+    // Search TMDB directly
+    const response = await axios.get('https://api.themoviedb.org/3/search/movie', {
+      params: {
+        api_key: apiKey,
+        query: movieTitle,
+        language: 'en-US',
+      },
+      timeout: 10000,
+    })
+
+    const movies = response.data.results || []
+    const movie = movies[0]
+
     return successResponse({
       id: `vocab_search_${Date.now()}`,
-      movieTitle: movieData?.title || movieTitle,
-      movieOverview: movieData?.overview,
-      posterPath: movieData?.poster_path,
+      movieTitle: movie?.title || movieTitle,
+      movieOverview: movie?.overview,
+      posterPath: movie?.poster_path,
       level,
       words: [],
       message:
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
       source: 'requires_manual_upload',
     })
   } catch (error) {
-    console.error('Search error:', error)
+    console.error('Search error:', error instanceof Error ? error.message : error)
     return failResponse('Failed to search movies', 'SEARCH_ERROR', 500)
   }
 }
