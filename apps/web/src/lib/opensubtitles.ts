@@ -73,35 +73,66 @@ export async function searchSubtitles(query: string, language: string = 'fr') {
         query,
         languages: language,
       },
+      timeout: 15000,
     })
 
-    return response.data.data as SubtitleSearchResult[]
+    const results = response.data.data || []
+    console.log(`✅ [OpenSubtitles] Query: "${query}" (${language}) → ${results.length} results`)
+
+    if (!Array.isArray(results)) {
+      console.error(`❌ [OpenSubtitles] Response data.data is not array:`, typeof results)
+      return []
+    }
+
+    return results as SubtitleSearchResult[]
   } catch (error) {
-    console.error('OpenSubtitles search error:', error)
-    throw new Error('Failed to search subtitles')
+    console.error(`❌ [OpenSubtitles] Search error:`, error instanceof Error ? error.message : String(error))
+    throw error
   }
 }
 
-export async function downloadSubtitle(fileId: number): Promise<string> {
-  try {
-    if (!API_KEY) {
-      throw new Error('OPENSUBTITLES_API_KEY not configured')
-    }
+export async function downloadSubtitle(fileId: number, retries = 3): Promise<string> {
+  let lastError: any = null
 
-    const response = await axios.post(
-      `${BASE_URL}/download`,
-      { file_id: fileId },
-      {
-        headers: {
-          'Api-Key': API_KEY,
-          'User-Agent': 'VocabLearn/1.0',
-        },
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      if (!API_KEY) {
+        throw new Error('OPENSUBTITLES_API_KEY not configured')
       }
-    )
 
-    return response.data.file_data
-  } catch (error) {
-    console.error('OpenSubtitles download error:', error)
-    throw new Error('Failed to download subtitle')
+      console.log(`[OpenSubtitles] Download attempt ${attempt}/${retries} for file ${fileId}`)
+
+      const response = await axios.post(
+        `${BASE_URL}/download`,
+        { file_id: fileId },
+        {
+          headers: {
+            'Api-Key': API_KEY,
+            'User-Agent': 'VocabLearn/1.0',
+          },
+          timeout: 15000,
+        }
+      )
+
+      if (!response.data.file_data) {
+        throw new Error('No file_data in response')
+      }
+
+      console.log(`✅ [OpenSubtitles] Download successful (${response.data.file_data.length} bytes)`)
+      return response.data.file_data
+    } catch (error) {
+      lastError = error
+      const status = error instanceof axios.AxiosError ? error.response?.status : null
+      console.warn(`⚠️  [OpenSubtitles] Download attempt ${attempt} failed (status: ${status})`)
+
+      if (attempt < retries) {
+        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000)
+        console.log(`   Retrying in ${delayMs}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+    }
   }
+
+  console.error(`❌ [OpenSubtitles] Download failed after ${retries} attempts`)
+  throw lastError || new Error('Failed to download subtitle after retries')
 }
