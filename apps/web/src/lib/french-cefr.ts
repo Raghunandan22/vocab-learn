@@ -6,17 +6,24 @@
 import { FRENCH_CEFR_WORDS } from './french-cefr-data'
 
 export function getWordLevel(word: string): string {
-  return FRENCH_CEFR_WORDS[word.toLowerCase()] || 'C2'
+  // Returns the CEFR level from dictionary, or undefined if not found
+  return FRENCH_CEFR_WORDS[word.toLowerCase()] || 'unknown'
 }
 
 export function filterWordsByLevel(words: string[], maxLevel: string): string[] {
   const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
   const maxIndex = levels.indexOf(maxLevel)
+  if (maxIndex === -1) return words // Invalid level, return all
 
   return words.filter((word) => {
     const wordLevel = getWordLevel(word)
-    const wordIndex = levels.indexOf(wordLevel)
-    return wordIndex >= 0 && wordIndex <= maxIndex
+    // If word is in dictionary, filter by level
+    if (wordLevel !== 'unknown') {
+      const wordIndex = levels.indexOf(wordLevel)
+      return wordIndex >= 0 && wordIndex <= maxIndex
+    }
+    // If word NOT in dictionary, include it anyway (MVP approach)
+    return true
   })
 }
 

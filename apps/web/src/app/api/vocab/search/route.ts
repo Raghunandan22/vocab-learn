@@ -110,11 +110,12 @@ export async function POST(request: NextRequest) {
 
       if (matchingLines.length > 0) {
         const translation = await translateWord(word, 'en')
+        const wordLevel = getWordLevel(word)
         vocabWords.push({
           word,
           wordLower: word.toLowerCase(),
           translation,
-          cefLevel: getWordLevel(word),
+          cefLevel: wordLevel === 'unknown' ? level : wordLevel,
           frequency: matchingLines.length,
           example: matchingLines[0]?.text || '',
           timestamp: matchingLines[0]?.startTime || '',
