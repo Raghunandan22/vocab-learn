@@ -141,3 +141,41 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/
+
+# Test files
+test-*.js
+*.test.js
+
+# Data files
+*.parquet
+*.xlsx
+*.csv
+downloads/
+archive/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.cab
+*.msi
+
+# Local development
+*.tmp
+.claude/
