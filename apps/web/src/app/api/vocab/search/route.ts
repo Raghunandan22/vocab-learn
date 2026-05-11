@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { searchSchema } from '@/lib/validators'
 import { successResponse, failResponse } from '@/lib/api-response'
 import { NextRequest } from 'next/server'
@@ -21,16 +20,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Search TMDB directly
-    const response = await axios.get('https://api.themoviedb.org/3/search/movie', {
-      params: {
-        api_key: apiKey,
-        query: movieTitle,
-        language: 'en-US',
-      },
-      timeout: 10000,
+    const params = new URLSearchParams({
+      api_key: apiKey,
+      query: movieTitle,
+      language: 'en-US',
     })
 
-    const movies = response.data.results || []
+    const response = await fetch(`https://api.themoviedb.org/3/search/movie?${params.toString()}`, {
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const movies = data.results || []
     const movie = movies[0]
 
     return successResponse({

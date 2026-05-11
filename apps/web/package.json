@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@prisma/client": "^5.8.0",
-    "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",
     "next": "^15.0.0",
     "next-auth": "^4.24.0",
