@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 
 function LoginPageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,17 +29,18 @@ function LoginPageContent() {
       const result = await signIn('credentials', {
         email,
         password,
-        redirect: true,
-        callbackUrl: '/dashboard',
+        redirect: false,
       })
 
-      if (!result?.ok) {
+      if (result?.error) {
         setError('Invalid email or password')
+        setIsLoading(false)
+      } else if (result?.ok) {
+        router.push('/dashboard')
       }
     } catch (err) {
       setError('An unexpected error occurred')
       console.error('Login error:', err)
-    } finally {
       setIsLoading(false)
     }
   }
